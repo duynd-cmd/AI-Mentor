@@ -28,22 +28,11 @@ interface Resource {
   benefits: string[];
 }
 
-interface ExtractResult {
-  url: string;
-  raw_content: string;
-  images?: string[];
-}
-
-interface ExtractResponse {
-  results: ExtractResult[];
-  response_time?: number;
-}
-
 // Add caching for Tavily results
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 const searchCache = new Map();
 
-// Function to search using Tavily API with proper error handling
+// Simplified Tavily search function
 async function searchTavily(subject: string): Promise<TavilyResponse> {
   try {
     // Check cache first
@@ -57,7 +46,7 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
       throw new Error("TAVILY_API_KEY is not configured");
     }
 
-    // First use search API
+    // Simplified search API call
     const searchResponse = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: {
@@ -65,21 +54,16 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
         'Authorization': `Bearer ${TAVILY_API_KEY}`
       },
       body: JSON.stringify({
-        query: `best learning resources and courses for ${subject}`,
-        search_depth: "advanced",
+        query: `best learning resources for ${subject}`,
+        search_depth: "basic", // Changed to basic for faster results
         include_answer: false,
-        max_results: 10, // Increased from 5 to 10 to get more results
+        max_results: 5, // Reduced to 5 results
         include_domains: [
           "coursera.org",
           "edx.org", 
           "udemy.com",
           "khanacademy.org",
-          "freecodecamp.org",
-          "w3schools.com",
-          "codecademy.com",
-          "pluralsight.com",
-          "youtube.com",
-          "medium.com"
+          "freecodecamp.org"
         ]
       })
     });
@@ -89,55 +73,8 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
     }
 
     const searchData = await searchResponse.json() as TavilyResponse;
-    console.log("Tavily search results:", searchData);
-
-    // Then use extract API to get more details
-    const validUrls = searchData.results
-      .map(result => result.url)
-      .filter(url => {
-        try {
-          new URL(url);
-          return true;
-        } catch {
-          return false;
-        }
-      });
-
-    if (validUrls.length > 0) {
-      try {
-        const extractResponse = await fetch('https://api.tavily.com/extract', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${TAVILY_API_KEY}`
-          },
-          body: JSON.stringify({
-            urls: validUrls
-          })
-        });
-
-        if (extractResponse.ok) {
-          const extractData = await extractResponse.json() as ExtractResponse;
-          console.log("Tavily extract results:", extractData);
-
-          // Enhance search results with extracted content
-          const enhancedResults = searchData.results.map(result => {
-            const extractInfo = extractData.results.find(e => e.url === result.url);
-            return {
-              ...result,
-              content: extractInfo?.raw_content || result.content
-            };
-          });
-
-          searchData.results = enhancedResults;
-        }
-      } catch (error) {
-        console.error("Extract API error:", error);
-        // Continue with original search results if extract fails
-      }
-    }
     
-    // Cache the enhanced results
+    // Cache results
     searchCache.set(cacheKey, {
       timestamp: Date.now(),
       data: searchData
@@ -150,16 +87,15 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
   }
 }
 
-// Function to curate resources using Gemini
+// Simplified Gemini function
 async function curateResourcesWithGemini(searchData: TavilyResponse, subject: string) {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
   const relevantContent = searchData.results
-    .filter(result => result.score > 0.5) // Lowered score threshold to get more results
     .map(result => ({
       title: result.title,
       url: result.url,
-      description: result.content.substring(0, 200) + "..."
+      description: result.content.substring(0, 100) // Reduced content length
     }));
 
   // Default high-quality resources if search fails
@@ -196,22 +132,10 @@ async function curateResourcesWithGemini(searchData: TavilyResponse, subject: st
     }
   ];
 
-  const prompt = `As an expert educator, curate exactly 5 of the most relevant and high-quality free learning resources for ${subject}.
+  const prompt = `Curate 5 best learning resources for ${subject}.
+${JSON.stringify(relevantContent)}
 
-${searchData.answer ? `Context from search:\n${searchData.answer}\n` : ''}
-
-${relevantContent.length > 0 
-  ? `Found resources:\n${JSON.stringify(relevantContent, null, 2)}\n` 
-  : `Using default resources:\n${JSON.stringify(defaultResources, null, 2)}\n`
-}
-
-Create a curated list of exactly 5 best resources. For each resource:
-1. Verify it's freely accessible
-2. Ensure it's suitable for learning ${subject}
-3. Include a brief but informative description
-4. Add specific benefits for learners
-
-Return the list in this JSON format:
+Return in JSON format:
 {
   "resources": [
     {
@@ -221,35 +145,16 @@ Return the list in this JSON format:
       "benefits": ["Benefit 1", "Benefit 2"]
     }
   ]
-}
-
-Important: The response MUST contain exactly 5 resources.`;
+}`;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-
-    // Clean and parse the response
-    const cleanedText = text.replace(/```json\s*|\s*```/g, '').trim();
-    const resources = JSON.parse(cleanedText);
-
-    if (!resources.resources || !Array.isArray(resources.resources) || resources.resources.length !== 5) {
-      console.log("Invalid number of resources, using defaults");
-      return { resources: defaultResources };
-    }
-
-    // Validate each resource has required fields
-    resources.resources.forEach((resource: Resource) => {
-      if (!resource.title || !resource.url || !resource.description || !Array.isArray(resource.benefits)) {
-        throw new Error("Invalid resource format");
-      }
-    });
-
+    const resources = JSON.parse(text.replace(/```json\s*|\s*```/g, '').trim());
     return resources;
   } catch (error) {
     console.error("Error processing Gemini response:", error);
-    // Return default resources if there's an error
     return { resources: defaultResources };
   }
 }

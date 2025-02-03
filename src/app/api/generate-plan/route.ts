@@ -19,11 +19,10 @@ interface TavilyResponse {
   answer?: string;
 }
 
-// Function to search using Tavily API with proper error handling
+// Simplified search function
 async function searchTavily(subject: string): Promise<TavilyResponse> {
   try {
     if (!process.env.TAVILY_API_KEY) {
-      console.error("TAVILY_API_KEY is not configured");
       return { results: [], answer: '' };
     }
 
@@ -34,26 +33,14 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
         'Authorization': `Bearer ${process.env.TAVILY_API_KEY}`
       },
       body: JSON.stringify({
-        query: `${subject} curriculum syllabus learning path study guide`,
-        search_depth: "advanced",
+        query: `${subject} study guide`,
+        search_depth: "basic",
         include_answer: true,
-        max_results: 10,
-        include_domains: [
-          "edu",
-          "org",
-          "gov",
-          "com"
-        ]
+        max_results: 5
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Tavily API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData
-      });
       return { results: [], answer: '' };
     }
 
@@ -68,7 +55,7 @@ async function searchTavily(subject: string): Promise<TavilyResponse> {
   }
 }
 
-// Function to generate study plan with Gemini
+// Simplified plan generation
 async function generatePlanWithGemini(
   searchData: TavilyResponse, 
   subject: string, 
@@ -77,37 +64,12 @@ async function generatePlanWithGemini(
 ) {
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-  // Extract relevant content from search results
-  const relevantContent = searchData.results
-    .filter(result => result.score > 0.7)
-    .map(result => ({
-      title: result.title,
-      content: result.content
-    }));
+  const prompt = `Create a ${daysUntilExam}-day study plan for ${subject}.
+Exam date: ${examDate}
 
-  // Fallback content if no search results
-  const fallbackContent = {
-    title: "General Study Guide",
-    content: `Study guide for ${subject} focusing on core concepts and exam preparation.`
-  };
+${searchData.answer ? `Context: ${searchData.answer}\n` : ''}
 
-  const prompt = `As an expert study planner, create a detailed study plan for ${subject} with ${daysUntilExam} days until the exam on ${examDate}. 
-
-${searchData.answer ? `Context from research:\n${searchData.answer}\n` : ''}
-
-${relevantContent.length > 0 
-  ? `Relevant curriculum information:\n${JSON.stringify(relevantContent)}\n` 
-  : `Using general curriculum structure:\n${JSON.stringify([fallbackContent])}\n`
-}
-
-Create a comprehensive study plan that:
-1. Breaks down the subject into logical weekly segments based on the curriculum
-2. Provides specific daily tasks and goals
-3. Includes realistic time estimates for each task
-4. Suggests effective study techniques specific to ${subject}
-5. Includes exam preparation strategies for the final weeks
-
-Return the plan in this exact JSON format:
+Return in JSON format:
 {
   "overview": {
     "subject": "${subject}",
@@ -117,39 +79,23 @@ Return the plan in this exact JSON format:
   "weeklyPlans": [
     {
       "week": "Week X",
-      "goals": ["Primary goal 1", "Primary goal 2"],
+      "goals": ["Goal 1", "Goal 2"],
       "dailyTasks": [
         {
           "day": "Day Y",
-          "tasks": ["Specific task 1", "Specific task 2"],
+          "tasks": ["Task 1", "Task 2"],
           "duration": "X hours"
         }
       ]
     }
   ],
-  "recommendations": [
-    "Study tip 1",
-    "Study tip 2"
-  ]
-}
-
-Ensure the plan is realistic, well-structured, and focused on mastery of the subject.`;
+  "recommendations": ["Tip 1", "Tip 2"]
+}`;
 
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
-
-    // Clean and parse the response
-    const cleanedText = text.replace(/```json\s*|\s*```/g, '').trim();
-    const plan = JSON.parse(cleanedText);
-    
-    // Validate plan structure
-    if (!plan.overview || !plan.weeklyPlans || !plan.recommendations) {
-      throw new Error("Invalid plan structure");
-    }
-
-    return plan;
+    return JSON.parse(response.text().replace(/```json\s*|\s*```/g, '').trim());
   } catch (error) {
     console.error("Error processing Gemini response:", error);
     throw error;
