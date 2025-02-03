@@ -1,90 +1,39 @@
-# Mind Mentor: AI-Powered Study Assistant 🧠
+# Mind Mentor 
 
-## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Installation](#installation)
-- [Environment Setup](#environment-setup)
-- [API Integration](#api-integration)
-- [Usage Guide](#usage-guide)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Overview
-
-Mind Mentor is an intelligent study companion that leverages AI to transform the learning experience. It combines personalized study planning, resource curation, and interactive assistance to help students achieve their academic goals efficiently.
+An AI-powered study assistant that helps students create personalized study plans, find learning resources, and track their progress.
 
 ## Features
 
-### 1. Personalized Study Plans 📚
-- Dynamic plan generation based on subject and exam date
-- Weekly and daily task breakdown
-- Progress tracking and adjustable schedules
-- Smart recommendations based on learning patterns
-- Visual calendar integration for session tracking
+### 1. Study Planning 📚
+- Generate personalized study plans based on subject and exam date
+- Track progress with an interactive calendar
+- Get smart recommendations for study sessions
 
-### 2. AI-Powered Resource Curation 🔍
-- Intelligent filtering of educational resources
-- Support for multiple content types:
-  - Online courses
-  - Video tutorials
-  - Documentation
-  - Interactive exercises
-  - Academic papers
-- Quality scoring and relevance ranking
+### 2. Resource Curation 🔍
+- Find the best learning resources for any subject
+- Access curated video tutorials, courses, and documentation
+- Save and organize learning materials
 
 ### 3. Productivity Tools ⚡
-- **Pomodoro Timer**
-- **Smart Notes System**
-
-### 4. User Experience 🎯
-- Clean, intuitive interface
-- Responsive design
-- Progress visualization
-- Resource bookmarking
-- Cross-device synchronization
+- Pomodoro Timer for focused study sessions
+- Smart Notes system for organizing learning materials
+- Progress tracking and statistics
 
 ## Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Styling**: 
-  - Tailwind CSS
-  - Shadcn UI
-- **State Management**: Zustand
-- **Authentication**: NextAuth.js
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS + Shadcn UI
+- NextAuth.js for authentication
 
 ### Backend
-- **API Routes**: Next.js API Routes
-- **Database**: MongoDB with Mongoose
-- **AI Services**:
-  - Google Generative AI (Gemini Pro)
-  - Tavily API for resource curation
-- **Authentication**: JWT with NextAuth.js
+- Express.js server
+- MongoDB with Mongoose
+- Google Gemini AI
+- Tavily API
 
-
-## Architecture
-
-```
-mind-mentor/
-├── src/
-│   ├── app/                 # Next.js 14 app directory
-│   │   ├── (auth)/         # Authentication routes
-│   │   ├── (dashboard)/    # Protected dashboard routes
-│   │   ├── (marketing)/    # Public marketing pages
-│   │   └── api/            # API routes
-│   ├── components/         # React components
-│   ├── lib/               # Utility functions and configs
-│   ├── models/            # MongoDB schemas
-│   └── types/             # TypeScript type definitions
-├── public/                # Static assets
-
-```
-
-## Installation
+## Quick Start
 
 1. Clone the repository:
 ```bash
@@ -94,84 +43,91 @@ cd mind-mentor
 
 2. Install dependencies:
 ```bash
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd server
 npm install
 ```
 
-3. Run the development server:
+3. Set up environment variables:
+
+Create `.env.local` in root directory:
+```env
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret
+MONGODB_URI=your-mongodb-uri
+AI_MIDDLEWARE_URL=http://localhost:3001
+```
+
+Create `server/.env`:
+```env
+GOOGLE_API_KEY=your-gemini-api-key
+TAVILY_API_KEY=your-tavily-api-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+4. Start the development servers:
+
+Frontend:
 ```bash
 npm run dev
 ```
 
-## Environment Setup
-
-Create a `.env.local` file with the following variables:
-
-```env
-# Authentication
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-nextauth-secret
-
-# Database
-MONGODB_URI=your-mongodb-uri
-
-# AI Services
-GOOGLE_API_KEY=your-gemini-api-key
-TAVILY_API_KEY=your-tavily-api-key
-
-# Optional Services
-GROQ_API_KEY=your-groq-api-key
+Backend:
+```bash
+cd server
+npm run dev
 ```
 
-## API Integration
+## Deployment
 
-### Google Generative AI (Gemini)
-Used for:
-- Study plan generation
-- Resource description enhancement
-- Learning path recommendations
+### Frontend (Vercel)
+1. Push to GitHub
+2. Import to Vercel
+3. Add environment variables
+4. Deploy
 
-### Tavily API
-Used for:
-- Educational resource curation
-- Content relevance scoring
-- Resource metadata extraction
+### Backend (Render)
+1. Push server directory to GitHub
+2. Create new Web Service on Render
+3. Configure:
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+4. Add environment variables
+5. Deploy
 
-## Usage Guide
+## API Routes
 
-### Study Plan Generation
-1. Navigate to the study plan section
-2. Enter your subject and exam date
-3. Click "Generate Plan"
-4. View and customize your personalized study schedule
+### Study Plan
+- `POST /api/plan`: Generate study plan
+- `GET /api/study-plan`: Get user's plans
+- `PUT /api/study-plan/:id`: Update plan
 
-### Pomodoro Timer
-1. A 25 minute timer work/break duration
-2. Start your study session
-3. Follow the timer prompts for breaks
-4. View your session history and statistics
-5. Adjust intervals based on productivity patterns
+### Resources
+- `POST /api/curate`: Get curated resources
+- `GET /api/resources`: Get saved resources
+- `POST /api/resources`: Save new resource
 
-### Notes Management
-1. Create new notes with rich text formatting
-2. Organize notes by subjects/topics
-3. Use the search function to find specific content
-4. Export notes in various formats
-5. Access your notes across devices
+### User
+- `POST /api/auth/signin`: Sign in
+- `POST /api/auth/register`: Register
+- `GET /api/user/profile`: Get profile
+- `PUT /api/user/profile`: Update profile
 
 ## Contributing
 
-We welcome contributions! Please follow these steps:
-
 1. Fork the repository
-2. Create a feature branch
+2. Create your feature branch
 3. Commit your changes
-4. Push to your branch
+4. Push to the branch
 5. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License
 
 ---
 
-Built with 💡 by Kartik Labhshetwar
+Built by Kartik Labhshetwar
