@@ -1,0 +1,51 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    environment:
+      NODE_ENV: production
+    networks:
+      - mind-mentor
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: dockerfile
+    working_dir: /app
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env
+    environment:
+      NODE_ENV: production
+    networks:
+      - mind-mentor
+    depends_on:
+      - mongodb
+
+  mongodb:
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    networks:
+      - mind-mentor
+    env_file:
+      - ./server/.env
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
+
+networks:
+  mind-mentor:
+    driver: bridge
