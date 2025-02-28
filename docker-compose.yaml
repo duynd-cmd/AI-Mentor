@@ -2,7 +2,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     working_dir: /app
     ports:
       - "3000:3000"
@@ -18,7 +18,7 @@ services:
   backend:
     build:
       context: ./server
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     working_dir: /app
     ports:
       - "5000:5000"
