@@ -1,6 +1,7 @@
-# Mind Mentor: AI-Powered Study Assistant 
+# Mind Mentor: AI-Powered Study Assistant
 
 ## Table of Contents
+
 - [Overview](#overview)
 - [Features](#key-features)
 - [Tech Stack](#tech-stack)
@@ -12,11 +13,7 @@
 
 ## Demo
 
-
-
 https://github.com/user-attachments/assets/1ea26947-1dca-408d-9741-b24c3429944a
-
-
 
 ## Overview
 
@@ -25,6 +22,7 @@ Mind Mentor is an intelligent study companion that leverages AI to transform the
 ## Key Features
 
 ### 1. AI-Powered Study Planning 📚
+
 - **Dynamic Plan Generation**
   - Subject-based customization
   - Exam date optimization
@@ -37,6 +35,7 @@ Mind Mentor is an intelligent study companion that leverages AI to transform the
   - Performance analytics
 
 ### 2. Smart Resource Curation 🔍
+
 - **AI-Driven Content Discovery**
   - Tavily API integration for relevant search
   - Quality scoring algorithm
@@ -53,6 +52,7 @@ Mind Mentor is an intelligent study companion that leverages AI to transform the
   - Topic relevance ranking
 
 ### 3. User Experience 🎯
+
 - **Modern Interface**
   - Clean, responsive design
   - Toast notifications
@@ -63,23 +63,25 @@ Mind Mentor is an intelligent study companion that leverages AI to transform the
 ## Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 14 with App Router
 - **Language**: TypeScript
-- **Styling**: 
+- **Styling**:
   - Tailwind CSS for utility-first styling
   - Shadcn UI for component library
-- **State Management**: 
+- **State Management**:
   - Zustand for global state
   - React Query for server state
 - **Authentication**: NextAuth.js with JWT
 
 ### Backend
+
 - **Runtime**: Node.js with Express
 - **Database**: MongoDB with Mongoose ODM
 - **AI Services**:
   - Groq API for study plan generation
   - Tavily API for resource curation
-- **Security**: 
+- **Security**:
   - JWT authentication
   - Rate limiting
   - Input validation
@@ -87,12 +89,14 @@ Mind Mentor is an intelligent study companion that leverages AI to transform the
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/KartikLabhshetwar/mind-mentor
 cd mind-mentor
 ```
 
 2. Install dependencies for both frontend and backend:
+
 ```bash
 npm install
 
@@ -131,26 +135,67 @@ JWT_SECRET=your-jwt-secret
 4. Start the development servers:
 
 Frontend:
+
 ```bash
 npm run dev
 ```
 
 Backend:
+
 ```bash
 cd server
 npm run dev
 ```
 
+## Installation with Docker 🐳
+
+Mind Mentor is now fully containerized for simplified deployment. The project includes Dockerfiles for the frontend and backend along with a docker-compose file that orchestrates the containers for the frontend, backend, and MongoDB.
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/) must be installed on your machine.
+
+## Setup
+
+1. **Configure Environment Variables:**
+   - Ensure the following environment files are configured:
+     - `frontend/.env` – Contains frontend-specific variables.
+     - `server/.env` – Contains backend-specific variables, including your MongoDB URI.
+2. **Build and Run Containers:**
+
+   From the project root, run:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   This command builds the images for the frontend, backend, and MongoDB, then starts all containers.
+
+3. **Access the Application:**
+   - **Frontend:** [http://localhost:3000](http://localhost:3000/)
+   - **Backend:** [http://localhost:5000](http://localhost:5000/)
+4. **Stopping the Containers:**
+
+   To stop and remove the containers, run:
+
+   ```bash
+   docker compose down
+   ```
+
 ## API Integration
 
 ### Groq API
+
 Used for:
+
 - Study plan generation
 - Resource description enhancement
 - Learning path recommendations
 
 ### Tavily API
+
 Used for:
+
 - Educational resource curation
 - Content relevance scoring
 - Resource metadata extraction
@@ -158,12 +203,14 @@ Used for:
 ## Usage Guide
 
 ### Study Plan Generation
+
 1. Navigate to the study plan section
 2. Enter your subject and exam date
 3. Click "Generate Plan"
 4. View and customize your personalized study schedule
 
 ### Pomodoro Timer
+
 1. A 25 minute timer work/break duration
 2. Start your study session
 3. Follow the timer prompts for breaks
@@ -171,6 +218,7 @@ Used for:
 5. Adjust intervals based on productivity patterns
 
 ### Notes Management
+
 1. Create new notes with rich text formatting
 2. Organize notes by subjects/topics
 3. Use the search function to find specific content
