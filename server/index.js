@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import authMiddleware from './middleware/authMiddleware.js';
 // Load environment variables
 dotenv.config();
 
@@ -37,7 +38,7 @@ app.use(
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"],
   })
 );
 
@@ -71,9 +72,9 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Apply routes directly without auth middleware
-app.use('/generate-plan', generatePlanRouter);
-app.use('/curate-resources', curateResourcesRouter);
-app.use('/pdf', pdfChatRouter);
+app.use('/generate-plan', authMiddleware, generatePlanRouter);
+app.use('/curate-resources', authMiddleware, curateResourcesRouter);
+app.use('/pdf', authMiddleware, pdfChatRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

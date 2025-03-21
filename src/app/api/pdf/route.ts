@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 // List all PDFs
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     
     // Get the session token
-    const token = await getToken({ 
-      req,
-      secret: process.env.NEXTAUTH_SECRET 
-    });
+    // const token = await getToken({ 
+    //   req,
+    //   secret: process.env.NEXTAUTH_SECRET 
+    // });
 
-    if (!token || !token.id) {
-      console.log('No authentication token or user ID found');
-      return NextResponse.json(
-        { error: 'Unauthorized - Please sign in' },
-        { status: 401 }
-      );
+    // if (!token || !token.id) {
+    //   console.log('No authentication token or user ID found');
+    //   return NextResponse.json(
+    //     { error: 'Unauthorized - Please sign in' },
+    //     { status: 401 }
+    //   );
+    // }
+
+    const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const apiUrl = process.env.API_URL || 'http://localhost:5000';
@@ -28,7 +35,7 @@ export async function GET(req: NextRequest) {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'x-user-id': token.id.toString(),
+          'x-user-id': session.user.id,
         },
         cache: 'no-store'
       });
