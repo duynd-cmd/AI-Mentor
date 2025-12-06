@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -12,67 +12,33 @@ import {
   ZoomOut,
   RotateCw,
   Maximize2,
-  Menu,
-  Volume2
+  Menu
 } from "lucide-react";
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
-import { AudioPlayer } from "@/components/scriba/AudioPlayer";
+import React from 'react';
 
-// --- STABILITY FIX: Use CDN Worker ---
-// This ensures the worker loads correctly in production (Render/Vercel)
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
 // Helper function to convert base64 to buffer
 function base64ToBuffer(base64String: string): Uint8Array {
+  // Remove data URL prefix if present
   const base64Data = base64String.replace(/^data:application\/pdf;base64,/, '');
+  // Convert to binary string
   const binaryString = atob(base64Data);
+  // Create buffer
   const buffer = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     buffer[i] = binaryString.charCodeAt(i);
   }
   return buffer;
 }
-
-// =========================================================================
-// --- UTILITY FUNCTION FOR TEXT EXTRACTION (FINAL TypeScript Fix) ---
-// We remove all custom interfaces and rely on 'any' input casting in isolation.
-// =========================================================================
-
-async function extractTextFromPdf(pdf: any): Promise<string> {
-  let fullText = "";
-  // Cast pdf to 'any' for direct property access, resolving type errors.
-  const numPages = pdf.numPages as number;
-
-  for (let i = 1; i <= numPages; i++) {
-    try {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-
-      // Filter and map items based on runtime properties (str)
-      const pageText = textContent.items
-        .filter((item: any) => item && typeof item === 'object' && typeof item.str === 'string')
-        .map((item: any) => item.str)
-        .join(' ');
-        
-      fullText += pageText + "\n\n";
-    } catch (err) {
-      console.warn(`Could not read page ${i}`, err);
-    }
-  }
-
-  fullText = fullText.trim();
-  
-  if (!fullText) {
-    return "I couldn't find any readable text. This might be a scanned image.";
-  }
-  return fullText;
-}
-
-// =========================================================================
-
 
 interface PdfViewerProps {
   documentId: string;
@@ -84,6 +50,7 @@ const MemoizedPage = React.memo(Page);
 const MemoizedDocument = React.memo(Document);
 
 export default function PdfViewer({ documentId, currentPage, onPageChange }: PdfViewerProps) {
+  // Refs for values that don't need to trigger re-renders
   const touchRef = useRef({
     isDragging: false,
     startX: 0,
@@ -92,7 +59,8 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     lastRotation: 0
   });
   const contentRef = useRef<HTMLDivElement>(null);
-   
+  
+  // State that affects rendering
   const [viewState, setViewState] = useState({
     numPages: 0,
     scale: 1,
@@ -111,41 +79,13 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     title: ''
   });
 
-  // --- Scriba / Audio Player State ---
-  const [showPlayer, setShowPlayer] = useState(false);
-  const [pdfText, setPdfText] = useState("");
-  const [isExtractingText, setIsExtractingText] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-
+  // Add new state for page loading
   const [isPageLoading, setIsPageLoading] = useState(false);
+
+  // Add ref for PDF dimensions
   const pdfDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
-  // --- CRITICAL FIX: Extract Text in Browser ---
-  // We now call the isolated utility function 'extractTextFromPdf'
-  // The 'pdf' parameter must be cast to 'any' to avoid the recurring type errors.
-  const onDocumentLoadSuccess = useCallback(async (pdf: any) => {
-    // These two lines need to access properties of the external PDF object
-    setViewState(prev => ({ ...prev, numPages: pdf.numPages as number })); // Line 136 Fix
-    setUiState(prev => ({ ...prev, error: null })); // Fix 136
-
-    // Start extraction immediately
-    setIsExtractingText(true);
-    setStatusMessage("Reading document...");
-    
-    try {
-      const extractedText = await extractTextFromPdf(pdf); // Passed the 'any' object directly
-      setPdfText(extractedText);
-      console.log("PDF Text Extracted on Frontend:", extractedText.substring(0, 100) + "...");
-    } catch (e) {
-      console.error("Text extraction failed:", e);
-      setPdfText("Error reading document.");
-    } finally {
-      setIsExtractingText(false);
-      setStatusMessage("");
-    }
-  }, []);
-  // ---------------------------------------------
-
+  // Memoized handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       touchRef.current.isDragging = true;
@@ -163,12 +103,13 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
+    
     if (e.touches.length === 1 && touchRef.current.isDragging) {
       setViewState(prev => ({
         ...prev,
         position: {
           x: e.touches[0].clientX - touchRef.current.startX,
-          y: e.touches[0].clientY - viewState.position.y
+          y: e.touches[0].clientY - touchRef.current.startY
         }
       }));
     } else if (e.touches.length === 2) {
@@ -178,6 +119,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
         touch1.clientX - touch2.clientX,
         touch1.clientY - touch2.clientY
       );
+      
       const scaleDiff = (currentDistance - touchRef.current.lastScale) * 0.01;
       setViewState(prev => ({
         ...prev,
@@ -191,6 +133,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     touchRef.current.isDragging = false;
   }, []);
 
+  // Fetch PDF data
   const fetchPdf = useCallback(async () => {
     if (!documentId) {
       setUiState(prev => ({ ...prev, error: 'No document ID specified' }));
@@ -200,6 +143,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     try {
       setUiState(prev => ({ ...prev, loading: true }));
       const response = await fetch(`/api/pdf/${documentId}`);
+      
       if (!response.ok) throw new Error('Failed to fetch PDF');
       
       const data = await response.json();
@@ -221,6 +165,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     }
   }, [documentId]);
 
+  // Handlers
   const handlePageChange = useCallback((offset: number) => {
     const newPage = viewState.pageNumber + offset;
     if (newPage >= 1 && newPage <= viewState.numPages) {
@@ -251,6 +196,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     setViewState(prev => ({ ...prev, scale: 1 }));
   }, []);
 
+  // Effects
   useEffect(() => {
     fetchPdf();
   }, [fetchPdf]);
@@ -268,11 +214,13 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
         scale: window.innerWidth < 768 ? 0.8 : 1
       }));
     };
+
     adjustScale();
     window.addEventListener('resize', adjustScale);
     return () => window.removeEventListener('resize', adjustScale);
   }, []);
 
+  // Update memoized page options
   const pageOptions = useMemo(() => ({
     pageNumber: viewState.pageNumber || 1,
     scale: viewState.scale,
@@ -291,9 +239,10 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
     },
   }), [viewState.pageNumber, viewState.scale, viewState.rotation]);
 
+  // Update document options
   const documentOptions = useMemo(() => ({
     file: documentData.pdfData ? { data: base64ToBuffer(documentData.pdfData) } : null,
-    loading: null, 
+    loading: null, // Remove document loading spinner
   }), [documentData.pdfData]);
 
   return (
@@ -315,17 +264,6 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
           </h2>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowPlayer(true)}
-            className="lg:hidden"
-            title="Read Aloud"
-            disabled={isExtractingText}
-          >
-            <Volume2 className="h-4 w-4" />
-          </Button>
-
           <Button
             variant="ghost"
             size="sm"
@@ -353,6 +291,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
         "lg:hidden flex flex-col gap-4 p-4 bg-muted/40 border-b border-black transition-all duration-300",
         uiState.showMobileMenu ? "block" : "hidden"
       )}>
+        {/* Page Navigation and Zoom Display */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Button
@@ -382,6 +321,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
           </span>
         </div>
 
+        {/* Zoom Controls */}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
@@ -396,10 +336,12 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
             onClick={() => handleZoom(0.1)}
             className="flex items-center justify-center gap-2 h-12"
           >
+            <ZoomIn className="h-5 w-5" />
             <span>Zoom In</span>
           </Button>
         </div>
 
+        {/* Additional Controls */}
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
@@ -418,19 +360,6 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
             <span>{uiState.isFullscreen ? 'Exit Full' : 'Fullscreen'}</span>
           </Button>
         </div>
-
-        {/* EXPLICIT READ BUTTON FOR MOBILE MENU */}
-        <Button
-            onClick={() => {
-              setShowPlayer(true);
-              setUiState(prev => ({ ...prev, showMobileMenu: false }));
-            }}
-            disabled={isExtractingText}
-            className="w-full flex items-center justify-center gap-2 h-12 mt-2 bg-[#c1ff72] text-black border-2 border-black hover:bg-[#b0ef63] font-semibold"
-        >
-            <Volume2 className="h-5 w-5" />
-            <span>{isExtractingText ? statusMessage || 'Loading...' : 'Read PDF Aloud'}</span>
-        </Button>
       </div>
 
       {/* Desktop Controls */}
@@ -489,19 +418,6 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
           >
             <RotateCw className="h-4 w-4" />
           </Button>
-
-          {/* Read PDF Button (Desktop) */}
-          <div className="border-l border-black pl-2 ml-2">
-             <Button
-              onClick={() => setShowPlayer(true)}
-              size="sm"
-              disabled={isExtractingText}
-              className="bg-[#c1ff72] text-black border-2 border-black hover:bg-[#b0ef63] font-semibold gap-2 min-w-[120px]"
-            >
-              <Volume2 className="h-4 w-4" />
-              {isExtractingText ? 'Processing...' : 'Read PDF'}
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -547,7 +463,10 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
             >
               <MemoizedDocument
                 {...documentOptions}
-                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadSuccess={({ numPages }) => {
+                  setViewState(prev => ({ ...prev, numPages }));
+                  setUiState(prev => ({ ...prev, error: null }));
+                }}
                 onLoadError={(err) => {
                   console.error('PDF load error:', err);
                   setUiState(prev => ({ ...prev, error: 'Failed to load PDF file.' }));
@@ -574,24 +493,6 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
           )}
         </div>
       </ScrollArea>
-
-      {/* FAIL-SAFE FLOATING BUTTON */}
-      <Button
-        onClick={() => setShowPlayer(true)}
-        disabled={isExtractingText}
-        className="fixed bottom-20 right-6 z-40 shadow-xl bg-[#c1ff72] text-black border-2 border-black hover:bg-[#b0ef63] h-12 w-12 rounded-full flex items-center justify-center lg:hidden"
-        title="Read PDF"
-      >
-        <Volume2 className="h-6 w-6" />
-      </Button>
-
-      {/* Audio Player Component */}
-      {showPlayer && (
-        <AudioPlayer 
-          text={pdfText} 
-          onClose={() => setShowPlayer(false)} 
-        />
-      )}
     </div>
   );
-}
+} 
