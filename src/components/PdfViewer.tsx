@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Document, Page, pdfjs, PDFDocumentProxy, TextItem } from 'react-pdf';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import PacmanLoader from 'react-spinners/PacmanLoader';
@@ -36,7 +36,24 @@ function base64ToBuffer(base64String: string): Uint8Array {
   return buffer;
 }
 
-// FIX: Removed custom interfaces and now rely on types exported by 'react-pdf' (PDFDocumentProxy, TextItem)
+// --- FINAL FIX: Use reliable local interfaces to avoid Module export errors ---
+
+// Define only the structure needed for text extraction
+interface TextItem {
+  str: string;
+}
+
+interface PdfPage {
+  getTextContent: () => Promise<{ items: any[] }>; // Use 'any' here for internal library structure safety
+}
+
+interface PdfDocumentProxy {
+  numPages: number;
+  getPage: (pageIndex: number) => Promise<PdfPage>;
+}
+
+// Define a minimal type for predicate filtering
+type PossibleTextItem = { str?: string } | null | undefined;
 
 interface PdfViewerProps {
   documentId: string;
@@ -46,9 +63,6 @@ interface PdfViewerProps {
 
 const MemoizedPage = React.memo(Page);
 const MemoizedDocument = React.memo(Document);
-
-// Define a minimal item type based on PDFJS TextItem structure for filtering
-type PossibleTextItem = { str?: string } | null;
 
 export default function PdfViewer({ documentId, currentPage, onPageChange }: PdfViewerProps) {
   const touchRef = useRef({
@@ -88,7 +102,7 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
   const pdfDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
   // --- CRITICAL FIX: Extract Text in Browser ---
-  const onDocumentLoadSuccess = useCallback(async (pdf: PDFDocumentProxy) => {
+  const onDocumentLoadSuccess = useCallback(async (pdf: PdfDocumentProxy) => {
     setViewState(prev => ({ ...prev, numPages: pdf.numPages }));
     setUiState(prev => ({ ...prev, error: null }));
 
