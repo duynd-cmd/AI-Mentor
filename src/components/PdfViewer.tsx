@@ -36,10 +36,16 @@ function base64ToBuffer(base64String: string): Uint8Array {
   return buffer;
 }
 
-// Define specific types for PDF objects to fix "Unexpected any" errors
+// Define explicit types to resolve Next.js compilation errors
+
+// Helper type for TextContent items that have the 'str' property
+interface TextItem {
+  str: string;
+}
+
+// Loosen the return type to match the library's return object structure
 interface PdfPage {
-  getTextContent: () => Promise<{ items: { str: string }[] }>;
-  // FIX: Removed getViewport and get to resolve TypeScript errors (they are not used for text extraction)
+  getTextContent: () => Promise<{ items: (TextItem | any)[] }>; // Using 'any' as a fallback for internal TextMarkedContent types
 }
 interface PdfDocumentProxy {
   numPages: number;
@@ -109,8 +115,13 @@ export default function PdfViewer({ documentId, currentPage, onPageChange }: Pdf
         try {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
-          // Fix TypeScript error by checking the type definition above
-          const pageText = textContent.items.map((item: { str: string }) => item.str).join(' '); 
+          
+          // FIX: Filter items to only include those with the 'str' property
+          const pageText = textContent.items
+            .filter((item): item is TextItem => !!item && typeof item === 'object' && 'str' in item)
+            .map(item => item.str)
+            .join(' ');
+            
           fullText += pageText + "\n\n";
         } catch (err) {
           console.warn(`Could not read page ${i}`, err);
